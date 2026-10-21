@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Grievance Portal – Department of Geography, CUTN</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <nav><span class="brand">🧭 Department of Geography, CUTN</span><span id="who"></span></nav>
+  <h1>Something not right? Tell us, and we'll track it with you.</h1>
+  <p>Raise a concern, get a complaint number straight away, and follow it until it's resolved. Your Student Council representatives read every one.</p>
+</div></header>
+
+<main class="wrap pull">
+  <section id="login" class="card">
+    <h2>Sign in with Google</h2>
+    <p>Use your Gmail account. Your complaint number and every update will be emailed to it.</p>
+    <div id="gbtn"></div>
+  </section>
+
+  <div id="app" hidden>
+    <div class="tabs">
+      <button class="on" data-t="new">New grievance</button>
+      <button data-t="mine">My grievances</button>
+    </div>
+
+    <section id="new">
+      <div id="ok" class="card ok" hidden>
+        <p>Your grievance is registered. Complaint number:</p>
+        <b></b>
+        <p>A copy has been emailed to you and to the department and school representatives.</p>
+      </div>
+      <form id="f" class="card">
+        <label for="cat">Category</label>
+        <select id="cat" required>
+          <option value="">Select a category</option>
+          <option>Academic and teaching</option><option>Examinations and evaluation</option>
+          <option>GIS lab and equipment</option><option>Fieldwork and excursions</option>
+          <option>Classrooms and facilities</option><option>Hostel and campus</option>
+          <option>Scholarship and fees</option><option>Harassment or discrimination</option><option>Other</option>
+        </select>
+        <label for="sub">Subject</label>
+        <input id="sub" maxlength="120" required placeholder="A short title for your concern">
+        <label for="desc">What happened?</label>
+        <textarea id="desc" required placeholder="Describe the problem, where and when it happened, and who was involved."></textarea>
+        <label for="files">Photos or documents (optional, up to 3 files, 3 MB each)</label>
+        <input id="files" type="file" multiple accept="image/*,.pdf">
+        <button id="send">Submit grievance</button>
+      </form>
+    </section>
+
+    <section id="mine" hidden><div id="list"></div></section>
+  </div>
+</main>
+
+<script src="app.js"></script>
+<script>
+const read = f => new Promise((ok, no) => {
+  if (f.size > 3e6) return no(new Error(f.name + ' is larger than 3 MB'));
+  const r = new FileReader();
+  r.onload = () => ok({ name: f.name, type: f.type, data: r.result.split(',')[1] });
+  r.onerror = () => no(new Error('Could not read ' + f.name));
+  r.readAsDataURL(f);
+});
+async function load() {
+  $('#list').innerHTML = '<p>Loading…</p>';
+  try {
+    const j = await api('mine');
+    $('#list').innerHTML = j.rows.length ? j.rows.reverse().map(r => `
+      <article class="card">
+        <div class="row"><b>${esc(r.ID)}</b>${badge(r.Status)}</div>
+        <h3>${esc(r.Subject)}</h3>
+        <small>${esc(r.Category)}, filed ${esc(r.Created)}</small>
+        <p class="pre">${esc(r.Description)}</p>
+        ${r.Resolution ? `<div class="res"><b>Reply from the department</b><br><span class="pre">${esc(r.Resolution)}</span></div>` : '<small>No reply yet. You will get an email when the status changes.</small>'}
+      </article>`).join('') : '<div class="card">You have not filed any grievances yet.</div>';
+  } catch (e) { $('#list').innerHTML = `<div class="card">${esc(e.message)}</div>`; }
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('#new').hidden = b.dataset.t !== 'new'; $('#mine').hidden = b.dataset.t !== 'mine';
+  if (b.dataset.t === 'mine') load();
+});
+$('#f').onsubmit = async e => {
+  e.preventDefault();
+  const b = $('#send'); b.disabled = true; b.textContent = 'Submitting…';
+  try {
+    const files = await Promise.all([...$('#files').files].slice(0, 3).map(read));
+    const j = await api('submit', { category: $('#cat').value, subject: $('#sub').value, description: $('#desc').value, files });
+    $('#f').reset(); $('#ok').hidden = false; $('#ok b').textContent = j.id; scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (x) { alert(x.message); }
+  b.disabled = false; b.textContent = 'Submit grievance';
+};
+initAuth(() => {});
+</script>
+</body>
+</html>

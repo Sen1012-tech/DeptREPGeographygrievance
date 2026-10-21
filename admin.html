@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin – Grievance Desk, Department of Geography, CUTN</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<header class="hero" style="padding-bottom:80px"><div class="wrap">
+  <nav><span class="brand">🧭 Grievance Desk, Dept. of Geography</span><span id="who"></span></nav>
+  <h1>Review, respond, resolve.</h1>
+  <p>Every status change and reply is emailed to the student automatically.</p>
+</div></header>
+
+<main class="wrap pull">
+  <section id="login" class="card">
+    <h2>Admin sign in</h2>
+    <p>Only the registered department and school representatives can open this desk.</p>
+    <div id="gbtn"></div>
+  </section>
+
+  <div id="app" hidden>
+    <div id="stats" class="stats"></div>
+    <div class="card">
+      <div class="filters">
+        <select id="fs" aria-label="Filter by status"><option value="">All statuses</option></select>
+        <input id="q" placeholder="Search by ID, name, email or subject" aria-label="Search">
+      </div>
+      <div class="tw" id="list"></div>
+    </div>
+  </div>
+</main>
+
+<dialog id="d"><div id="dc"></div></dialog>
+
+<script src="app.js"></script>
+<script>
+let rows = [];
+$('#fs').innerHTML += STATUS.map(s => `<option>${s}</option>`).join('');
+async function load() {
+  try { rows = (await api('all')).rows.reverse(); draw(); }
+  catch (e) { $('#app').innerHTML = `<div class="card">${esc(e.message)}</div>`; }
+}
+function draw() {
+  const s = $('#fs').value, q = $('#q').value.toLowerCase(), c = {};
+  rows.forEach(r => c[r.Status] = (c[r.Status] || 0) + 1);
+  $('#stats').innerHTML = `<div class="stat"><b>${rows.length}</b>Total</div>` + STATUS.map(k => `<div class="stat"><b>${c[k] || 0}</b>${k}</div>`).join('');
+  const v = rows.filter(r => (!s || r.Status === s) && [r.ID, r.Name, r.Email, r.Subject, r.Category].join(' ').toLowerCase().includes(q));
+  $('#list').innerHTML = v.length ? `<table><thead><tr><th>ID</th><th>Student</th><th>Subject</th><th>Filed</th><th>Status</th></tr></thead><tbody>${v.map(r =>
+    `<tr data-id="${esc(r.ID)}"><td>${esc(r.ID)}</td><td>${esc(r.Name)}<br><small>${esc(r.Email)}</small></td><td>${esc(r.Subject)}<br><small>${esc(r.Category)}</small></td><td>${esc(r.Created)}</td><td>${badge(r.Status)}</td></tr>`).join('')}</tbody></table>` : '<p>No grievances match.</p>';
+}
+$('#fs').onchange = $('#q').oninput = draw;
+$('#list').onclick = e => { const tr = e.target.closest('tr[data-id]'); if (tr) show(tr.dataset.id); };
+function show(id) {
+  const r = rows.find(x => x.ID === id);
+  const files = String(r.Files || '').split('\n').filter(Boolean).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">Attachment ${i + 1}</a>`).join(', ') || 'None';
+  $('#dc').innerHTML = `
+    <div class="row"><h2>${esc(r.ID)}</h2>${badge(r.Status)}</div>
+    <p><b>${esc(r.Name)}</b> (${esc(r.Email)})<br><small>${esc(r.Category)}, filed ${esc(r.Created)}</small></p>
+    <h3>${esc(r.Subject)}</h3><p class="pre">${esc(r.Description)}</p>
+    <p><b>Attachments:</b> ${files}</p>
+    <label for="st">Status</label><select id="st">${STATUS.map(s => `<option ${s === r.Status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+    <label for="rs">Reply to the student</label><textarea id="rs" placeholder="Explain the action taken or the next step.">${esc(r.Resolution)}</textarea>
+    <div class="row"><button id="sv">Save and email student</button><button class="ghost" id="cl" style="color:var(--ink)">Close</button></div>`;
+  $('#cl').onclick = () => $('#d').close();
+  $('#sv').onclick = async () => {
+    const b = $('#sv'); b.disabled = true; b.textContent = 'Saving…';
+    try { await api('update', { id, status: $('#st').value, resolution: $('#rs').value }); $('#d').close(); load(); }
+    catch (e) { alert(e.message); b.disabled = false; b.textContent = 'Save and email student'; }
+  };
+  $('#d').showModal();
+}
+initAuth(load);
+</script>
+</body>
+</html>
