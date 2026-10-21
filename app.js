@@ -1,7 +1,7 @@
 // ====== EDIT THESE TWO LINES ======
 const CFG = {
-  API_URL: 'PASTE_APPS_SCRIPT_WEB_APP_URL',
-  CLIENT_ID: 'PASTE_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
+  API_URL: 'https://script.google.com/macros/s/AKfycbzBrjRXqQkahl1nXG_IfsyRisYJ_sryuWbRlCzFNrsXLecTQUYy6Hk-548mU0T3vIO03g/exec',
+  CLIENT_ID: '869749251109-sl9ce8l4u3eq8mtq48o09pvmg4s14lds.apps.googleusercontent.com'
 };
 // ==================================
 const $ = s => document.querySelector(s);
